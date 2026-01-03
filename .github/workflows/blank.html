@@ -1,0 +1,21 @@
+# -- FAST ATTACK CHUẨN
+local CombatFramework = require(
+    LocalPlayer.PlayerScripts:WaitForChild("CombatFramework")
+)
+local CameraShaker = require(
+    ReplicatedStorage.Util.CameraShaker
+)
+
+task.spawn(function()
+    while task.wait() do
+        if State.FastAttack then
+            pcall(function()
+                CombatFramework.activeController.timeToNextAttack = 0
+                CombatFramework.activeController.attacking = false
+                CombatFramework.activeController.increment = 3
+                CombatFramework.activeController.hitboxMagnitude = 60
+                CombatFramework.activeController.attack()
+            end)
+        end
+    end
+end)
