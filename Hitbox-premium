@@ -1,0 +1,84 @@
+-- Rayfield UI
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "🔥 Premium Script",
+   LoadingTitle = "Rayfield Interface",
+   LoadingSubtitle = "by ChatGPT",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "PremiumScript",
+      FileName = "MainConfig"
+   },
+   Discord = {
+      Enabled = false
+   },
+   KeySystem = false
+})
+
+-- TAB
+local MainTab = Window:CreateTab("⚔️ Combat", 4483362458)
+local VisualTab = Window:CreateTab("👁️ Visual", 4483362458)
+local MiscTab = Window:CreateTab("⚙️ Misc", 4483362458)
+
+---------------------------------
+-- HITBOX
+---------------------------------
+_G.Hitbox = false
+_G.HitboxSize = 10
+
+MainTab:CreateToggle({
+   Name = "Tăng Hitbox",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.Hitbox = Value
+   end,
+})
+
+MainTab:CreateSlider({
+   Name = "Size Hitbox",
+   Range = {5, 30},
+   Increment = 1,
+   CurrentValue = 10,
+   Callback = function(Value)
+      _G.HitboxSize = Value
+   end,
+})
+
+---------------------------------
+-- ESP (placeholder)
+---------------------------------
+VisualTab:CreateToggle({
+   Name = "ESP Player",
+   CurrentValue = false,
+   Callback = function(Value)
+      print("ESP:", Value)
+   end,
+})
+
+---------------------------------
+-- AIMLOCK (placeholder)
+---------------------------------
+MainTab:CreateToggle({
+   Name = "Aim Lock (Near)",
+   CurrentValue = false,
+   Callback = function(Value)
+      print("Aimlock:", Value)
+   end,
+})
+
+---------------------------------
+-- MISC
+---------------------------------
+MiscTab:CreateButton({
+   Name = "Rejoin Server",
+   Callback = function()
+      game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
+   end,
+})
+
+Rayfield:Notify({
+   Title = "Loaded!",
+   Content = "Rayfield Menu đã bật thành công",
+   Duration = 5,
+})
