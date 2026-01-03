@@ -1,0 +1,211 @@
+--// SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LP = Players.LocalPlayer
+
+--// SETTINGS
+local ESP = false
+local AIM = false
+local AUTO_FIRE = false
+
+local AIM_PART = "Head"
+local AIM_RADIUS = 80        -- FOV nhỏ
+local AIM_DISTANCE = 60      -- Chỉ aim gần (stud)
+local FIRE_DELAY = 0.12      -- Tốc độ bắn
+
+--// ESP
+local ESP_CACHE = {}
+
+local function CreateESP(plr)
+    if plr == LP then return end
+    local box = Drawing.new("Square")
+    box.Thickness = 2
+    box.Color = Color3.fromRGB(255,0,0)
+    box.Filled = false
+    box.Visible = false
+
+    local name = Drawing.new("Text")
+    name.Size = 14
+    name.Center = true
+    name.Outline = true
+    name.Color = Color3.fromRGB(255,255,255)
+    name.Visible = false
+
+    ESP_CACHE[plr] = {Box = box, Name = name}
+end
+
+local function RemoveESP(plr)
+    if ESP_CACHE[plr] then
+        ESP_CACHE[plr].Box:Remove()
+        ESP_CACHE[plr].Name:Remove()
+        ESP_CACHE[plr] = nil
+    end
+end
+
+for _,p in pairs(Players:GetPlayers()) do CreateESP(p) end
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+RunService.RenderStepped:Connect(function()
+    for plr,esp in pairs(ESP_CACHE) do
+        local char = plr.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
+
+        if ESP and hrp and hum and hum.Health > 0 then
+            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            if onScreen then
+                esp.Box.Size = Vector2.new(45,65)
+                esp.Box.Position = Vector2.new(pos.X-22,pos.Y-32)
+                esp.Box.Visible = true
+                esp.Name.Text = plr.Name
+                esp.Name.Position = Vector2.new(pos.X,pos.Y-45)
+                esp.Name.Visible = true
+            else
+                esp.Box.Visible = false
+                esp.Name.Visible = false
+            end
+        else
+            esp.Box.Visible = false
+            esp.Name.Visible = false
+        end
+    end
+end)
+
+--// GET CLOSEST (AIM GẦN)
+local function GetClosest()
+    if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return nil end
+    local closest, shortest = nil, AIM_RADIUS
+
+    for _,p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character
+        and p.Character:FindFirstChild(AIM_PART)
+        and p.Character:FindFirstChild("HumanoidRootPart") then
+
+            local dist3D = (p.Character.HumanoidRootPart.Position
+                - LP.Character.HumanoidRootPart.Position).Magnitude
+
+            if dist3D <= AIM_DISTANCE then
+                local pos, vis = Camera:WorldToViewportPoint(p.Character[AIM_PART].Position)
+                if vis then
+                    local mag = (
+                        Vector2.new(pos.X,pos.Y)
+                        - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+                    ).Magnitude
+                    if mag < shortest then
+                        shortest = mag
+                        closest = p
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+--// AIM LOCK
+RunService.RenderStepped:Connect(function()
+    if AIM then
+        local t = GetClosest()
+        if t and t.Character then
+            Camera.CFrame = CFrame.new(
+                Camera.CFrame.Position,
+                t.Character[AIM_PART].Position
+            )
+        end
+    end
+end)
+
+--// WALL CHECK
+local function CanSeeTarget(target)
+    if not target.Character or not target.Character:FindFirstChild(AIM_PART) then return false end
+
+    local origin = Camera.CFrame.Position
+    local direction = target.Character[AIM_PART].Position - origin
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {LP.Character}
+
+    local result = workspace:Raycast(origin, direction, params)
+    return result and result.Instance and result.Instance:IsDescendantOf(target.Character)
+end
+
+--// AUTO FIRE
+local lastFire = 0
+RunService.RenderStepped:Connect(function()
+    if not AUTO_FIRE or not AIM then return end
+    if tick() - lastFire < FIRE_DELAY then return end
+
+    local t = GetClosest()
+    if t and CanSeeTarget(t) then
+        lastFire = tick()
+        pcall(function()
+            mouse1press()
+            task.wait(0.03)
+            mouse1release()
+        end)
+    end
+end)
+
+--// MOBILE GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "MobileMenu"
+
+local openBtn = Instance.new("TextButton", gui)
+openBtn.Size = UDim2.new(0,120,0,45)
+openBtn.Position = UDim2.new(0,15,0.4,0)
+openBtn.Text = "☰ MENU"
+openBtn.TextScaled = true
+openBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+openBtn.TextColor3 = Color3.new(1,1,1)
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,230,0,260)
+frame.Position = UDim2.new(0.25,0,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.Visible = false
+frame.Active = true
+frame.Draggable = true
+
+local function makeBtn(text, y)
+    local b = Instance.new("TextButton", frame)
+    b.Size = UDim2.new(1,-20,0,50)
+    b.Position = UDim2.new(0,10,0,y)
+    b.Text = text
+    b.TextScaled = true
+    b.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    b.TextColor3 = Color3.new(1,1,1)
+    return b
+end
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,40)
+title.Text = "MOBILE MENU"
+title.TextScaled = true
+title.BackgroundColor3 = Color3.fromRGB(45,45,45)
+title.TextColor3 = Color3.new(1,1,1)
+
+local espBtn  = makeBtn("ESP : OFF", 50)
+local aimBtn  = makeBtn("AIM : OFF", 110)
+local fireBtn = makeBtn("AUTO FIRE : OFF", 170)
+
+openBtn.MouseButton1Click:Connect(function()
+    frame.Visible = not frame.Visible
+end)
+
+espBtn.MouseButton1Click:Connect(function()
+    ESP = not ESP
+    espBtn.Text = ESP and "ESP : ON" or "ESP : OFF"
+end)
+
+aimBtn.MouseButton1Click:Connect(function()
+    AIM = not AIM
+    aimBtn.Text = AIM and "AIM : ON" or "AIM : OFF"
+end)
+
+fireBtn.MouseButton1Click:Connect(function()
+    AUTO_FIRE = not AUTO_FIRE
+    fireBtn.Text = AUTO_FIRE and "AUTO FIRE : ON" or "AUTO FIRE : OFF"
+end)
